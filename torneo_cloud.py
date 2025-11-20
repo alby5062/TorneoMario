@@ -248,37 +248,7 @@ with tab4:
         st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
                     unsafe_allow_html=True)
 
-'''# TAB 5: GRAFICI
-with tab5:
-    st.header("📈 Analytics")
-    if len(data["giornate"]) > 0:
-        history_rows = []
-        cum_points = {p: 0 for p in players}
-        cum_games = {p: 0 for p in players}
-        for day_idx, day_key in enumerate(giornate_sorted):
-            d_data = data["giornate"][day_key]
-            d_absent = d_data.get("absent", [False] * 4)
-            x_axis = day_idx + 1
-            for i, p in enumerate(players):
-                if not d_absent[i]:
-                    points_today = sum(d_data["races"][f"Gara {r + 1}"][i] for r in range(12)) + d_data["basket"][i] + \
-                                   d_data["darts"][i]
-                    cum_points[p] += points_today;
-                    cum_games[p] += 1
-                current_avg = cum_points[p] / cum_games[p] if cum_games[p] > 0 else 0
-                history_rows.append({"Giornata": f"G{x_axis}", "Giocatore": p, "Punti Totali": cum_points[p],
-                                     "Media Punti": round(current_avg, 2),
-                                     "Stato": "Assente" if d_absent[i] else "Presente"})
-        df_hist = pd.DataFrame(history_rows)
-        fig_avg = px.line(df_hist, x="Giornata", y="Media Punti", color="Giocatore", markers=True, symbol="Giocatore",
-                          hover_data=["Stato"], title="Andamento Media Punti")
-        st.plotly_chart(fig_avg, use_container_width=True)
-        st.markdown("---")
-        fig_tot = px.line(df_hist, x="Giornata", y="Punti Totali", color="Giocatore", markers=True,
-                          title="Punti Totali Accumulati")
-        st.plotly_chart(fig_tot, use_container_width=True)
-    else:
-        st.info("Dati insufficienti.")'''
+
 
 # TAB 5: GRAFICI MOBILE FRIENDLY
 with tab5:
