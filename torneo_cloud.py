@@ -48,7 +48,7 @@ def save_data(data):
 
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="🏆 Trofeo della Mole", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="🏆GP Torino", page_icon="🏆", layout="wide")
 
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'db' not in st.session_state: st.session_state.db = load_data()
@@ -62,8 +62,8 @@ data = st.session_state.db
 players = data["config"]["players"]
 
 # --- HEADER ---
-st.title("🏆 Campionato Gran Premio di Torino - Circuito Corso Francia")
-st.subheader("📍 Torino | Cloud Edition ☁️")
+st.title("🏆 Gran Premio di Torino - Trofeo della Mole")
+st.subheader("📍 Circuito Corso Francia, Torino | Cloud Edition ☁️")
 
 # --- SIDEBAR ---
 with st.sidebar:
