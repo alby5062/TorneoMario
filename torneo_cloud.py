@@ -6,8 +6,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
 # --- CONFIGURAZIONE ---
-ADMIN_PASSWORD = "CorteDiFrancia"
-PLAYERS_DEFAULT = ["Infame", "Cammellaccio", "Pierino", "Nicolino"]
+ADMIN_PASSWORD = "mario"
+PLAYERS_DEFAULT = ["Giocatore 1", "Giocatore 2", "Giocatore 3", "Giocatore 4"]
 
 
 # --- CONNESSIONE A GOOGLE SHEETS ---
@@ -48,7 +48,7 @@ def save_data(data):
 
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="🏆 Trofeo della Mole", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="Campionato Corso Francia", page_icon="🏆", layout="wide")
 
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'db' not in st.session_state: st.session_state.db = load_data()
@@ -62,7 +62,7 @@ data = st.session_state.db
 players = data["config"]["players"]
 
 # --- HEADER ---
-st.title("🏆 Campionato Gran Premio di Torino - Circuito Corso Francia")
+st.title("🏆 Campionato Gran Premio Corso Francia")
 st.subheader("📍 Torino | Cloud Edition ☁️")
 
 # --- SIDEBAR ---
@@ -157,4 +157,165 @@ with tab1:
             with cols[i]:
                 disabled = absent_flags[i]
                 label = f"{player} (ASSENTE)" if disabled else player
-                current_label = REV_POINTS_MAP
+                current_label = REV_POINTS_MAP.get(current_vals[i], "Nessuno/0")
+                val = st.selectbox(label, options=["1° Posto", "2° Posto", "3° Posto", "4° Posto", "Nessuno/0"],
+                                   index=["1° Posto", "2° Posto", "3° Posto", "4° Posto", "Nessuno/0"].index(
+                                       current_label),
+                                   key=f"r_{race_num}_{i}", disabled=disabled)
+                if not disabled:
+                    new_score = POINTS_MAP[val]
+                    if new_score != current_vals[i]: day_data["races"][race_num][i] = new_score; updated = True
+        if updated: save_data(data)
+    summary = {"Gara": [f"Gara {i + 1}" for i in range(12)]}
+    for i, player in enumerate(players):
+        col_name = f"{player} (A)" if absent_flags[i] else player
+        summary[col_name] = [REV_POINTS_MAP.get(day_data["races"][f"Gara {r + 1}"][i], "-") for r in range(12)]
+    st.dataframe(pd.DataFrame(summary), use_container_width=True, height=400)
+
+# TAB 2: SKILL
+with tab2:
+    st.header("Skill & Bonus")
+    if st.session_state.is_admin:
+        updated_sk = False
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            for i, p in enumerate(players):
+                if not absent_flags[i]:
+                    v = st.number_input(f"KO {p}", value=day_data["ko"][i], key=f"ko_{i}")
+                    if v != day_data["ko"][i]: day_data["ko"][i] = v; updated_sk = True
+        with c2:
+            for i, p in enumerate(players):
+                if not absent_flags[i]:
+                    v = st.number_input(f"Basket {p}", max_value=9, value=day_data["basket"][i], key=f"bsk_{i}")
+                    if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
+        with c3:
+            for i, p in enumerate(players):
+                if not absent_flags[i]:
+                    v = st.number_input(f"Darts {p}", max_value=12, value=day_data["darts"][i], key=f"drt_{i}")
+                    if v != day_data["darts"][i]: day_data["darts"][i] = v; updated_sk = True
+        if updated_sk: save_data(data)
+    sk_disp = []
+    for i, p in enumerate(players):
+        status = "ASSENTE" if absent_flags[i] else "Presente"
+        sk_disp.append({"Giocatore": p, "Stato": status, "KO": day_data["ko"][i], "Basket": day_data["basket"][i],
+                        "Darts": day_data["darts"][i]})
+    st.dataframe(pd.DataFrame(sk_disp), use_container_width=True)
+
+# TAB 3: GIORNATA
+with tab3:
+    d_stats = []
+    for i, p in enumerate(players):
+        if not absent_flags[i]:
+            mk8 = sum(day_data["races"][f"Gara {r + 1}"][i] for r in range(12))
+            skill = day_data["basket"][i] + day_data["darts"][i]
+            d_stats.append({"Giocatore": p, "MK8": mk8, "Skill": skill, "KO": day_data["ko"][i], "TOTALE": mk8 + skill})
+    if d_stats:
+        df_d = pd.DataFrame(d_stats).sort_values(by=["TOTALE", "KO"], ascending=False).reset_index(drop=True)
+        df_d.index += 1
+        st.dataframe(df_d, use_container_width=True)
+        st.success(f"🏆 Vincitore Giornata: **{df_d.iloc[0]['Giocatore']}**")
+    else:
+        st.info("Nessun giocatore presente.")
+
+# TAB 4: GENERALE
+with tab4:
+    st.header("🌍 CLASSIFICA GENERALE")
+    gen_stats = {p: {"Totale": 0, "KO": 0, "Presenze": 0} for p in players}
+    for g_data in data["giornate"].values():
+        g_absent = g_data.get("absent", [False] * 4)
+        for i, p in enumerate(players):
+            if not g_absent[i]:
+                mk8 = sum(g_data["races"][f"Gara {r + 1}"][i] for r in range(12))
+                skill = g_data["basket"][i] + g_data["darts"][i]
+                ko = g_data["ko"][i]
+                gen_stats[p]["Presenze"] += 1
+                gen_stats[p]["Totale"] += (mk8 + skill)
+                gen_stats[p]["KO"] += ko
+    final_list = []
+    for p, s in gen_stats.items():
+        pg = s["Presenze"]
+        media = round(s["Totale"] / pg, 2) if pg > 0 else 0.0
+        final_list.append(
+            {"Giocatore": p, "PG": pg, "Totale Punti": s["Totale"], "MEDIA PUNTI": media, "Totale KO": s["KO"]})
+    df_gen = pd.DataFrame(final_list).sort_values(by=["MEDIA PUNTI", "Totale KO"], ascending=False).reset_index(
+        drop=True)
+    df_gen.index += 1
+    st.dataframe(
+        df_gen.style.format({"MEDIA PUNTI": "{:.2f}"}).background_gradient(subset=["MEDIA PUNTI"], cmap="Greens"),
+        use_container_width=True, height=250)
+    if not df_gen.empty:
+        st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
+                    unsafe_allow_html=True)
+
+# TAB 5: GRAFICI
+with tab5:
+    st.header("📈 Analytics")
+    if len(data["giornate"]) > 0:
+        history_rows = []
+        cum_points = {p: 0 for p in players}
+        cum_games = {p: 0 for p in players}
+        for day_idx, day_key in enumerate(giornate_sorted):
+            d_data = data["giornate"][day_key]
+            d_absent = d_data.get("absent", [False] * 4)
+            x_axis = day_idx + 1
+            for i, p in enumerate(players):
+                if not d_absent[i]:
+                    points_today = sum(d_data["races"][f"Gara {r + 1}"][i] for r in range(12)) + d_data["basket"][i] + \
+                                   d_data["darts"][i]
+                    cum_points[p] += points_today;
+                    cum_games[p] += 1
+                current_avg = cum_points[p] / cum_games[p] if cum_games[p] > 0 else 0
+                history_rows.append({"Giornata": f"G{x_axis}", "Giocatore": p, "Punti Totali": cum_points[p],
+                                     "Media Punti": round(current_avg, 2),
+                                     "Stato": "Assente" if d_absent[i] else "Presente"})
+        df_hist = pd.DataFrame(history_rows)
+        fig_avg = px.line(df_hist, x="Giornata", y="Media Punti", color="Giocatore", markers=True, symbol="Giocatore",
+                          hover_data=["Stato"], title="Andamento Media Punti")
+        st.plotly_chart(fig_avg, use_container_width=True)
+        st.markdown("---")
+        fig_tot = px.line(df_hist, x="Giornata", y="Punti Totali", color="Giocatore", markers=True,
+                          title="Punti Totali Accumulati")
+        st.plotly_chart(fig_tot, use_container_width=True)
+    else:
+        st.info("Dati insufficienti.")
+
+# TAB 6: REGOLAMENTO
+with tab6:
+    st.markdown("# 📜 Regolamento Ufficiale v2.0")
+    st.markdown("### Campionato Gran Premio Corso Francia – Championship Edition")
+
+    st.markdown("---")
+    st.subheader("1. Struttura del Campionato")
+    st.markdown("""
+    * Il torneo è strutturato a **Giornate**.
+    * Ogni Giornata prevede **12 Gare** di Mario Kart 8 + **Skill Challenge**.
+    * La classifica non si azzera, ma si accumula nel tempo.
+    """)
+
+    st.subheader("2. Impostazioni di Gara")
+    c1, c2 = st.columns(2)
+    with c1:
+        st.markdown("**Impostazioni Switch:**")
+        st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Normali**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
+    with c2:
+        st.markdown("**Punteggi Gara:**")
+        st.markdown(
+            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **10** |\n| 🥈 2° | **7** |\n| 🥉 3° | **4** |\n| 💩 4° | **2** |")
+
+    st.subheader("3. Skill Challenge (Bonus Fisici)")
+    st.markdown("""
+    Al termine delle gare, si svolgono le prove fisiche:
+    * **🏀 Canestro (Max 9pt):** 3 tiri. (Rete: **3pt**, Ferro: **2pt**, Fuori: **0pt**)
+    * **🎯 Freccette (Max 12pt):** 3 lanci. (Centro: **4pt**, Anello int: **2pt**, Est: **1pt**, Fuori: **0pt**)
+    """)
+
+    st.divider()
+    st.subheader("4. ⚖️ Il Calcolo della Classifica (MEDIA PUNTI)")
+    st.info("""
+    Per garantire equità in caso di assenze, vince chi ha la **MEDIA PUNTI** più alta, non il totale assoluto.
+    """)
+    st.latex(r"\text{Media Punti} = \frac{\text{Totale Punti Accumulati}}{\text{Numero di Giornate Giocate}}")
+    st.markdown("""
+    * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
+    * **Pareggi:** In caso di parità di media, vince chi ha inflitto più **K.O.** totali.
+    """)
