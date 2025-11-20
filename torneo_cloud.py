@@ -420,14 +420,14 @@ with tab6:
     st.subheader("2. Impostazioni di Gara")
     c1, c2 = st.columns(2)
     with c1:
-        st.markdown("**Impostazioni Switch:**")
+        st.markdown("**Impostazioni gioco:**")
         st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
         st.markdown("**Punteggi Gara:**")
         st.markdown(
             "| Pos | Punti |\n|---|---|\n| 🥇 1° | **10** |\n| 🥈 2° | **7** |\n| 🥉 3° | **4** |\n| 💩 4° | **2** |")
 
-    st.subheader("3. Skill Challenge (Bonus Fisici)")
+    st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
     Al termine delle gare, si svolgono le prove fisiche:
     * **🏀 Canestro (Max 15pt):** 5 tiri. (Rete: **3pt**, Ferro: **2pt**, Fuori: **0pt**)
