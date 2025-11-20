@@ -4,6 +4,7 @@ import json
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
+import plotly.graph_objects as go
 
 # --- CONFIGURAZIONE ---
 ADMIN_PASSWORD = "CorteDiFrancia"
@@ -247,7 +248,7 @@ with tab4:
         st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
                     unsafe_allow_html=True)
 
-# TAB 5: GRAFICI
+'''# TAB 5: GRAFICI
 with tab5:
     st.header("📈 Analytics")
     if len(data["giornate"]) > 0:
@@ -276,6 +277,160 @@ with tab5:
         fig_tot = px.line(df_hist, x="Giornata", y="Punti Totali", color="Giocatore", markers=True,
                           title="Punti Totali Accumulati")
         st.plotly_chart(fig_tot, use_container_width=True)
+    else:
+        st.info("Dati insufficienti.")'''
+
+# TAB 5: GRAFICI MOBILE FRIENDLY
+with tab5:
+    st.header("📱 Statistiche Rapide")
+
+    if len(data["giornate"]) > 0:
+        # --- 1. LE "FIGURINE" (Metriche a Card) ---
+        # Questa è la cosa più leggibile su telefono: Media attuale + Variazione
+        st.subheader("🔥 Forma Attuale")
+
+        cols = st.columns(2)  # 2 colonne su mobile stanno bene
+
+        # Calcoli preliminari
+        latest_medias = {}
+        deltas = {}
+
+        # Dati attuali
+        for p in players:
+            tot = 0;
+            count = 0
+            prev_tot = 0;
+            prev_count = 0
+
+            days_list = giornate_sorted
+
+            # Calcolo media totale oggi
+            for d in days_list:
+                d_data = data["giornate"][d]
+                if not d_data.get("absent", [False] * 4)[players.index(p)]:
+                    p_pts = sum(d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)) + \
+                            d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)]
+                    tot += p_pts;
+                    count += 1
+
+            # Calcolo media "ieri" (senza l'ultima giornata giocata)
+            for d in days_list[:-1]:  # Esclude l'ultima
+                d_data = data["giornate"][d]
+                if not d_data.get("absent", [False] * 4)[players.index(p)]:
+                    p_pts = sum(d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)) + \
+                            d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)]
+                    prev_tot += p_pts;
+                    prev_count += 1
+
+            curr_avg = tot / count if count > 0 else 0
+            prev_avg = prev_tot / prev_count if prev_count > 0 else 0
+
+            # Se è la prima giornata, il delta è 0
+            diff = curr_avg - prev_avg if prev_count > 0 else 0
+
+            # Visualizzazione a Card
+            with cols[players.index(p) % 2]:  # Alterna colonna dx/sx
+                st.metric(
+                    label=p,
+                    value=f"{curr_avg:.2f}",
+                    delta=f"{diff:.2f}",
+                    delta_color="normal"
+                )
+
+        st.markdown("---")
+
+        # --- 2. GRAFICO ANDAMENTO PULITO (Linee Spesse) ---
+        st.subheader("📈 La Scalata")
+        st.caption("Chi sta migliorando la propria media?")
+
+        # Ricostruiamo il dataframe storico (codice simile a prima)
+        history_rows = []
+        cum_points = {p: 0 for p in players}
+        cum_games = {p: 0 for p in players}
+
+        for day_idx, day_key in enumerate(giornate_sorted):
+            d_data = data["giornate"][day_key]
+            d_absent = d_data.get("absent", [False] * 4)
+            x_axis = day_idx + 1
+            for i, p in enumerate(players):
+                if not d_absent[i]:
+                    points_today = sum(d_data["races"][f"Gara {r + 1}"][i] for r in range(12)) + d_data["basket"][i] + \
+                                   d_data["darts"][i]
+                    cum_points[p] += points_today;
+                    cum_games[p] += 1
+                current_avg = cum_points[p] / cum_games[p] if cum_games[p] > 0 else 0
+                history_rows.append({"Giornata": f"G{x_axis}", "Giocatore": p, "Media": round(current_avg, 2)})
+
+        df_hist = pd.DataFrame(history_rows)
+
+        fig_line = px.line(df_hist, x="Giornata", y="Media", color="Giocatore", markers=True, symbol="Giocatore")
+
+        # OTTIMIZZAZIONE MOBILE:
+        fig_line.update_layout(
+            legend=dict(
+                orientation="h",  # Legenda orizzontale in alto
+                yanchor="bottom", y=1.02, xanchor="right", x=1
+            ),
+            margin=dict(l=20, r=20, t=20, b=20),  # Margini stretti per usare tutto lo schermo
+            xaxis_title=None,
+            yaxis_title=None,
+            showlegend=True
+        )
+        st.plotly_chart(fig_line, use_container_width=True)
+
+        st.markdown("---")
+
+        # --- 3. GRAFICO RADAR (Stile Videogioco) ---
+        #
+
+
+        st.subheader("🕹️ Stile di Gioco")
+        st.caption("Confronto abilità totali")
+
+        # Calcolo totali skill
+        skill_totals = {p: {"KO": 0, "Basket": 0, "Darts": 0} for p in players}
+        for g_data in data["giornate"].values():
+            for i, p in enumerate(players):
+                skill_totals[p]["KO"] += g_data["ko"][i]
+                skill_totals[p]["Basket"] += g_data["basket"][i]
+                skill_totals[p]["Darts"] += g_data["darts"][i]
+
+        # Creazione Radar Chart con Graph Objects (più flessibile di Express)
+        categories = ['K.O. Inflitti', 'Canestri', 'Freccette']
+
+        # Selettore giocatore per non sovrapporre troppo su mobile
+        selected_player_radar = st.selectbox("Analizza Giocatore:", players)
+
+        vals = [
+            skill_totals[selected_player_radar]["KO"],
+            skill_totals[selected_player_radar]["Basket"],
+            skill_totals[selected_player_radar]["Darts"]
+        ]
+
+        # Normalizziamo per rendere il grafico bello (scala 0-100 fittizia per riempire il triangolo)
+        # Ma qui usiamo i valori grezzi per onestà
+
+        fig_radar = go.Figure()
+        fig_radar.add_trace(go.Scatterpolar(
+            r=vals,
+            theta=categories,
+            fill='toself',
+            name=selected_player_radar,
+            line_color='#e0bc00'  # Color oro
+        ))
+
+        fig_radar.update_layout(
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, max(max(vals, default=10), 15)]  # Scala dinamica
+                )),
+            showlegend=False,
+            margin=dict(l=40, r=40, t=20, b=20)
+        )
+
+        st.plotly_chart(fig_radar, use_container_width=True)
+
     else:
         st.info("Dati insufficienti.")
 
