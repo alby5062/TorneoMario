@@ -157,4 +157,4 @@ with tab1:
             with cols[i]:
                 disabled = absent_flags[i]
                 label = f"{player} (ASSENTE)" if disabled else player
-                current_label = REV_POINTS_MAP.
+                current_label = REV_POINTS_MAP
