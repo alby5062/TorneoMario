@@ -5,7 +5,7 @@ import os
 import plotly.express as px
 
 # --- CONFIGURAZIONE SICUREZZA ---
-ADMIN_PASSWORD = "mario"
+ADMIN_PASSWORD = "CorteDiFrancia"
 
 # --- CONFIGURAZIONE FILE ---
 FILE_DATI = "dati_campionato.json"

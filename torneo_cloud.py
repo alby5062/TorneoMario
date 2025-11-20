@@ -6,8 +6,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
 # --- CONFIGURAZIONE ---
-ADMIN_PASSWORD = "mario"
-PLAYERS_DEFAULT = ["Giocatore 1", "Giocatore 2", "Giocatore 3", "Giocatore 4"]
+ADMIN_PASSWORD = "CorteDiFrancia"
+PLAYERS_DEFAULT = ["Infame", "Cammellaccio", "Pierino", "Nicolino"]
 
 
 # --- CONNESSIONE A GOOGLE SHEETS ---
@@ -65,7 +65,7 @@ def save_data(data):
 
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="Campionato Corso Francia", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="🏆 Trofeo della Mole", page_icon="🏆", layout="wide")
 
 # Inizializzazione stato
 if 'is_admin' not in st.session_state:
@@ -83,7 +83,7 @@ data = st.session_state.db
 players = data["config"]["players"]
 
 # --- HEADER ---
-st.title("🏆 Campionato Gran Premio Corso Francia")
+st.title("🏆 Campionato Gran Premio di Torino - Circuito Corso Francia")
 st.subheader("📍 Torino | Cloud Edition ☁️")
 
 # --- SIDEBAR ---
