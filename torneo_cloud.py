@@ -6,8 +6,8 @@ from oauth2client.service_account import ServiceAccountCredentials
 import plotly.express as px
 
 # --- CONFIGURAZIONE ---
-ADMIN_PASSWORD = "mario"
-PLAYERS_DEFAULT = ["Giocatore 1", "Giocatore 2", "Giocatore 3", "Giocatore 4"]
+ADMIN_PASSWORD = "CorteDiFrancia"
+PLAYERS_DEFAULT = ["Infame", "Cammellaccio", "Pierino", "Nicolino"]
 
 
 # --- CONNESSIONE A GOOGLE SHEETS ---
@@ -48,7 +48,7 @@ def save_data(data):
 
 
 # --- CONFIGURAZIONE PAGINA ---
-st.set_page_config(page_title="Campionato Corso Francia", page_icon="🏆", layout="wide")
+st.set_page_config(page_title="🏆 Trofeo della Mole", page_icon="🏆", layout="wide")
 
 if 'is_admin' not in st.session_state: st.session_state.is_admin = False
 if 'db' not in st.session_state: st.session_state.db = load_data()
@@ -62,7 +62,7 @@ data = st.session_state.db
 players = data["config"]["players"]
 
 # --- HEADER ---
-st.title("🏆 Campionato Gran Premio Corso Francia")
+st.title("🏆 Campionato Gran Premio di Torino - Circuito Corso Francia")
 st.subheader("📍 Torino | Cloud Edition ☁️")
 
 # --- SIDEBAR ---
@@ -281,8 +281,8 @@ with tab5:
 
 # TAB 6: REGOLAMENTO
 with tab6:
-    st.markdown("# 📜 Regolamento Ufficiale v2.0")
-    st.markdown("### Campionato Gran Premio Corso Francia – Championship Edition")
+    st.markdown("# 📜 Regolamento Ufficiale")
+    st.markdown("### Gran Premio di Torino – 🏆 Trofeo della Mole")
 
     st.markdown("---")
     st.subheader("1. Struttura del Campionato")
@@ -296,7 +296,7 @@ with tab6:
     c1, c2 = st.columns(2)
     with c1:
         st.markdown("**Impostazioni Switch:**")
-        st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Normali**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
+        st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
         st.markdown("**Punteggi Gara:**")
         st.markdown(
@@ -305,8 +305,8 @@ with tab6:
     st.subheader("3. Skill Challenge (Bonus Fisici)")
     st.markdown("""
     Al termine delle gare, si svolgono le prove fisiche:
-    * **🏀 Canestro (Max 9pt):** 3 tiri. (Rete: **3pt**, Ferro: **2pt**, Fuori: **0pt**)
-    * **🎯 Freccette (Max 12pt):** 3 lanci. (Centro: **4pt**, Anello int: **2pt**, Est: **1pt**, Fuori: **0pt**)
+    * **🏀 Canestro (Max 15pt):** 5 tiri. (Rete: **3pt**, Ferro: **2pt**, Fuori: **0pt**)
+    * **🎯 Freccette (Max 20pt):** 5 lanci. (Centro: **4pt**, Anello int: **2pt**, Est: **1pt**, Fuori: **0pt**)
     """)
 
     st.divider()
