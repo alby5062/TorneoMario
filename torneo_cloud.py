@@ -444,3 +444,19 @@ with tab6:
     * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
     * **Pareggi:** In caso di parità di media, vince chi ha inflitto più **K.O.** totali.
     """)
+
+    st.divider()
+    st.subheader("5. 📈 Statistiche e Forma Attuale")
+    st.markdown("""
+    Nella tab **Statistiche**, la voce "Forma Attuale" indica l'impatto dell'ultima partita sulla tua carriera.
+    """)
+    st.markdown("**Come si calcola il Delta (il numero piccolo):**")
+    st.latex(r"\text{Delta} = \text{Media Oggi} - \text{Media Ieri}")
+
+    col_info1, col_info2 = st.columns(2)
+    with col_info1:
+        st.success(
+            "**🟢 Verde (+):**\n\nLa tua prestazione odierna è stata **superiore** alla tua media storica. Hai alzato il livello!")
+    with col_info2:
+        st.error(
+            "**🔴 Rosso (-):**\n\nLa tua prestazione odierna è stata **inferiore** alla tua media storica. Hai abbassato la tua media.")
