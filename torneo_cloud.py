@@ -187,12 +187,12 @@ with tab2:
         with c2:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    v = st.number_input(f"Basket {p}", max_value=9, value=day_data["basket"][i], key=f"bsk_{i}")
+                    v = st.number_input(f"Basket {p}", max_value=20, value=day_data["basket"][i], key=f"bsk_{i}")
                     if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
         with c3:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    v = st.number_input(f"Darts {p}", max_value=12, value=day_data["darts"][i], key=f"drt_{i}")
+                    v = st.number_input(f"Darts {p}", max_value=10, value=day_data["darts"][i], key=f"drt_{i}")
                     if v != day_data["darts"][i]: day_data["darts"][i] = v; updated_sk = True
         if updated_sk: save_data(data)
     sk_disp = []
@@ -430,8 +430,8 @@ with tab6:
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
     Al termine delle gare, si svolgono le prove fisiche:
-    * **🏀 Canestro (Max 15pt):** 5 tiri. (Rete: **3pt**, Ferro: **2pt**, Fuori: **0pt**)
-    * **🎯 Freccette (Max 20pt):** 5 lanci. (Centro: **4pt**, Anello int: **2pt**, Est: **1pt**, Fuori: **0pt**)
+    * **🏀 Canestro (Max 20pt):** 10 tiri. (Canestro semplice: **1pt**, Canestro speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
+    * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: 0pt, 41-60: 2pt, 61-80: 4pt, 81-100:6pt, 101-120: 8pt, >120: 10pt)
     """)
 
     st.divider()
