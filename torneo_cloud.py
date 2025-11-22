@@ -431,7 +431,7 @@ with tab6:
     st.markdown("""
     Al termine delle gare, si svolgono le prove fisiche:
     * **🏀 Canestro (Max 20pt):** 10 tiri. (Canestro semplice: **1pt**, Canestro speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
-    * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: 0pt, 41-60: 2pt, 61-80: 4pt, 81-100:6pt, 101-120: 8pt, >120: 10pt)
+    * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
     """)
 
     st.divider()
