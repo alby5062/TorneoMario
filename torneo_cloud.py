@@ -134,7 +134,7 @@ with st.sidebar:
                     save_data(data);
                     st.rerun()
 
-# --- LOGICA PUNTEGGI AGGIORNATA ---
+# --- LOGICA PUNTEGGI ---
 POINTS_MAP = {"1° Posto": 4, "2° Posto": 3, "3° Posto": 2, "4° Posto": 1, "Nessuno/0": 0}
 REV_POINTS_MAP = {4: "1° Posto", 3: "2° Posto", 2: "3° Posto", 1: "4° Posto", 0: "Nessuno/0"}
 
@@ -205,15 +205,43 @@ with tab2:
 # TAB 3: GIORNATA
 with tab3:
     d_stats = []
+    perfect_score_player = None
+
     for i, p in enumerate(players):
         if not absent_flags[i]:
-            mk8 = sum(day_data["races"][f"Gara {r + 1}"][i] for r in range(12))
+            # Recupera tutti i punteggi delle gare per questo giocatore
+            race_points = [day_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
+            mk8_sum = sum(race_points)
             skill = day_data["basket"][i] + day_data["darts"][i]
-            d_stats.append({"Giocatore": p, "MK8": mk8, "Skill": skill, "KO": day_data["ko"][i], "TOTALE": mk8 + skill})
+
+            # --- PERFECT SCORE CHECK ---
+            # Se ha fatto 12 volte "4" (cioè 12 primi posti)
+            bonus_grand_slam = 0
+            if race_points.count(4) == 12:
+                bonus_grand_slam = 10
+                perfect_score_player = p  # Salviamo il nome per festeggiarlo
+
+            total = mk8_sum + skill + bonus_grand_slam
+
+            d_stats.append({
+                "Giocatore": p,
+                "MK8": mk8_sum,
+                "Skill": skill,
+                "Bonus 12/12": f"+{bonus_grand_slam}" if bonus_grand_slam > 0 else "-",
+                "KO": day_data["ko"][i],
+                "TOTALE": total
+            })
+
     if d_stats:
         df_d = pd.DataFrame(d_stats).sort_values(by=["TOTALE", "KO"], ascending=False).reset_index(drop=True)
         df_d.index += 1
         st.dataframe(df_d, use_container_width=True)
+
+        # Festeggiamenti speciali
+        if perfect_score_player:
+            st.balloons()
+            st.markdown(f"## 🤯 INCREDIBILE! {perfect_score_player} HA FATTO 12 SU 12! (+10 PUNTI)")
+
         st.success(f"🏆 Vincitore Giornata: **{df_d.iloc[0]['Giocatore']}**")
     else:
         st.info("Nessun giocatore presente.")
@@ -226,12 +254,20 @@ with tab4:
         g_absent = g_data.get("absent", [False] * 4)
         for i, p in enumerate(players):
             if not g_absent[i]:
-                mk8 = sum(g_data["races"][f"Gara {r + 1}"][i] for r in range(12))
+                # Calcolo Punti Gara
+                race_points = [g_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
+                mk8 = sum(race_points)
+
+                # Check Grand Slam (12 vittorie da 4 punti)
+                grand_slam = 10 if race_points.count(4) == 12 else 0
+
                 skill = g_data["basket"][i] + g_data["darts"][i]
                 ko = g_data["ko"][i]
+
                 gen_stats[p]["Presenze"] += 1
-                gen_stats[p]["Totale"] += (mk8 + skill)
+                gen_stats[p]["Totale"] += (mk8 + skill + grand_slam)
                 gen_stats[p]["KO"] += ko
+
     final_list = []
     for p, s in gen_stats.items():
         pg = s["Presenze"]
@@ -248,7 +284,7 @@ with tab4:
         st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
                     unsafe_allow_html=True)
 
-# TAB 5: GRAFICI
+# TAB 5: GRAFICI MOBILE FRIENDLY
 with tab5:
     st.header("📱 Statistiche Rapide")
 
@@ -267,16 +303,21 @@ with tab5:
             for d in days_list:
                 d_data = data["giornate"][d]
                 if not d_data.get("absent", [False] * 4)[players.index(p)]:
-                    p_pts = sum(d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)) + \
-                            d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)]
+                    # Calcolo Punti Giornalieri (Incluso Grand Slam)
+                    r_pts = [d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)]
+                    bonus = 10 if r_pts.count(4) == 12 else 0
+
+                    p_pts = sum(r_pts) + d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)] + bonus
                     tot += p_pts;
                     count += 1
 
             for d in days_list[:-1]:
                 d_data = data["giornate"][d]
                 if not d_data.get("absent", [False] * 4)[players.index(p)]:
-                    p_pts = sum(d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)) + \
-                            d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)]
+                    r_pts = [d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)]
+                    bonus = 10 if r_pts.count(4) == 12 else 0
+
+                    p_pts = sum(r_pts) + d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)] + bonus
                     prev_tot += p_pts;
                     prev_count += 1
 
@@ -302,8 +343,10 @@ with tab5:
             x_axis = day_idx + 1
             for i, p in enumerate(players):
                 if not d_absent[i]:
-                    points_today = sum(d_data["races"][f"Gara {r + 1}"][i] for r in range(12)) + d_data["basket"][i] + \
-                                   d_data["darts"][i]
+                    r_pts = [d_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
+                    bonus = 10 if r_pts.count(4) == 12 else 0
+                    points_today = sum(r_pts) + d_data["basket"][i] + d_data["darts"][i] + bonus
+
                     cum_points[p] += points_today;
                     cum_games[p] += 1
                 current_avg = cum_points[p] / cum_games[p] if cum_games[p] > 0 else 0
@@ -319,7 +362,7 @@ with tab5:
 
         st.markdown("---")
 
-        # --- 3. GRAFICO RADAR (VITTORIE/BASKET/DARTS) ---
+        # --- 3. GRAFICO RADAR ---
         st.subheader("🕹️ Stile di Gioco")
 
         style_totals = {p: {"Wins": 0, "Basket": 0, "Darts": 0} for p in players}
@@ -329,10 +372,9 @@ with tab5:
                 style_totals[p]["Basket"] += g_data["basket"][i]
                 style_totals[p]["Darts"] += g_data["darts"][i]
 
-                # Conta le vittorie (ORA VALGONO 4 PUNTI)
                 wins_today = 0
                 for race_scores in g_data["races"].values():
-                    if race_scores[i] == 4:  # <-- AGGIORNATO PER IL NUOVO PUNTEGGIO
+                    if race_scores[i] == 4:
                         wins_today += 1
                 style_totals[p]["Wins"] += wins_today
 
@@ -378,9 +420,13 @@ with tab6:
         st.markdown("**Impostazioni gioco:**")
         st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
-        st.markdown("**Punteggi Gara (Short):**")
+        st.markdown("**Punteggi Gara:**")
         st.markdown(
             "| Pos | Punti |\n|---|---|\n| 🥇 1° | **4** |\n| 🥈 2° | **3** |\n| 🥉 3° | **2** |\n| 💩 4° | **1** |")
+
+    st.markdown("#### 🌟 Grand Slam (Perfect Score)")
+    st.warning(
+        "Se un giocatore vince **tutte e 12 le gare** (fa sempre 1°) nella stessa giornata, ottiene un **Bonus di +10 Punti**!")
 
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
