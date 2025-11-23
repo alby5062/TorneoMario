@@ -430,18 +430,35 @@ with tab6:
 
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
-    * **🏀 Canestro (Max 20pt):** 10 tiri. (Semplice: **1pt**, Speciale: **2pt**)
-    * **🎯 Freccette (Max 10pt):** 6 lanci. (Punteggi a fasce)
-    """)
+        Al termine delle gare, si svolgono le prove fisiche:
+        * **🏀 Canestro (Max 20pt):** 10 tiri. (Canestro semplice: **1pt**, Canestro speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
+        * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
+        """)
 
     st.divider()
     st.subheader("4. ⚖️ Il Calcolo della Classifica (MEDIA PUNTI)")
+    st.info("""
+        Per garantire equità in caso di assenze, vince chi ha la **MEDIA PUNTI** più alta, non il totale assoluto.
+        """)
     st.latex(r"\text{Media Punti} = \frac{\text{Totale Punti Accumulati}}{\text{Numero di Giornate Giocate}}")
+    st.markdown("""
+        * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
+        * **Pareggi:** In caso di parità di media, vince chi ha inflitto più **K.O.** totali.
+        """)
 
     st.divider()
-    st.subheader("5. 📈 Statistiche")
-    st.markdown("**Forma Attuale (Delta):**")
+    st.subheader("5. 📈 Statistiche e Forma Attuale")
+    st.markdown("""
+        Nella tab **Statistiche**, la voce "Forma Attuale" indica l'impatto dell'ultima partita sulla tua carriera.
+        """)
+    st.markdown("**Come si calcola il Delta (il numero piccolo):**")
     st.latex(r"\text{Delta} = \text{Media Oggi} - \text{Media Ieri}")
+
     col_info1, col_info2 = st.columns(2)
-    with col_info1: st.success("**🟢 Verde (+):** Miglioramento")
-    with col_info2: st.error("**🔴 Rosso (-):** Peggioramento")
+    with col_info1:
+        st.success(
+            "**🟢 Verde (+):**\n\nLa tua prestazione odierna è stata **superiore** alla tua media storica. Hai alzato il livello!")
+    with col_info2:
+        st.error(
+            "**🔴 Rosso (-):**\n\nLa tua prestazione odierna è stata **inferiore** alla tua media storica. Hai abbassato la tua media.")
+
