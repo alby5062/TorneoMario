@@ -134,9 +134,9 @@ with st.sidebar:
                     save_data(data);
                     st.rerun()
 
-# --- LOGICA ---
-POINTS_MAP = {"1° Posto": 10, "2° Posto": 7, "3° Posto": 4, "4° Posto": 2, "Nessuno/0": 0}
-REV_POINTS_MAP = {10: "1° Posto", 7: "2° Posto", 4: "3° Posto", 2: "4° Posto", 0: "Nessuno/0"}
+# --- LOGICA PUNTEGGI AGGIORNATA ---
+POINTS_MAP = {"1° Posto": 4, "2° Posto": 3, "3° Posto": 2, "4° Posto": 1, "Nessuno/0": 0}
+REV_POINTS_MAP = {4: "1° Posto", 3: "2° Posto", 2: "3° Posto", 1: "4° Posto", 0: "Nessuno/0"}
 
 if selected_day is None: st.stop()
 day_data = data["giornate"][selected_day]
@@ -248,33 +248,22 @@ with tab4:
         st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
                     unsafe_allow_html=True)
 
-
-
-# TAB 5: GRAFICI MOBILE FRIENDLY
+# TAB 5: GRAFICI
 with tab5:
     st.header("📱 Statistiche Rapide")
 
     if len(data["giornate"]) > 0:
-        # --- 1. LE "FIGURINE" (Metriche a Card) ---
-        # Questa è la cosa più leggibile su telefono: Media attuale + Variazione
+        # --- 1. LE "FIGURINE" ---
         st.subheader("🔥 Forma Attuale")
+        cols = st.columns(2)
 
-        cols = st.columns(2)  # 2 colonne su mobile stanno bene
-
-        # Calcoli preliminari
-        latest_medias = {}
-        deltas = {}
-
-        # Dati attuali
         for p in players:
             tot = 0;
             count = 0
             prev_tot = 0;
             prev_count = 0
-
             days_list = giornate_sorted
 
-            # Calcolo media totale oggi
             for d in days_list:
                 d_data = data["giornate"][d]
                 if not d_data.get("absent", [False] * 4)[players.index(p)]:
@@ -283,8 +272,7 @@ with tab5:
                     tot += p_pts;
                     count += 1
 
-            # Calcolo media "ieri" (senza l'ultima giornata giocata)
-            for d in days_list[:-1]:  # Esclude l'ultima
+            for d in days_list[:-1]:
                 d_data = data["giornate"][d]
                 if not d_data.get("absent", [False] * 4)[players.index(p)]:
                     p_pts = sum(d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)) + \
@@ -294,26 +282,16 @@ with tab5:
 
             curr_avg = tot / count if count > 0 else 0
             prev_avg = prev_tot / prev_count if prev_count > 0 else 0
-
-            # Se è la prima giornata, il delta è 0
             diff = curr_avg - prev_avg if prev_count > 0 else 0
 
-            # Visualizzazione a Card
-            with cols[players.index(p) % 2]:  # Alterna colonna dx/sx
-                st.metric(
-                    label=p,
-                    value=f"{curr_avg:.2f}",
-                    delta=f"{diff:.2f}",
-                    delta_color="normal"
-                )
+            with cols[players.index(p) % 2]:
+                st.metric(label=p, value=f"{curr_avg:.2f}", delta=f"{diff:.2f}", delta_color="normal")
 
         st.markdown("---")
 
-        # --- 2. GRAFICO ANDAMENTO PULITO (Linee Spesse) ---
+        # --- 2. GRAFICO LINEE ---
         st.subheader("📈 La Scalata")
-        st.caption("Chi sta migliorando la propria media?")
 
-        # Ricostruiamo il dataframe storico (codice simile a prima)
         history_rows = []
         cum_points = {p: 0 for p in players}
         cum_games = {p: 0 for p in players}
@@ -332,73 +310,50 @@ with tab5:
                 history_rows.append({"Giornata": f"G{x_axis}", "Giocatore": p, "Media": round(current_avg, 2)})
 
         df_hist = pd.DataFrame(history_rows)
-
         fig_line = px.line(df_hist, x="Giornata", y="Media", color="Giocatore", markers=True, symbol="Giocatore")
-
-        # OTTIMIZZAZIONE MOBILE:
         fig_line.update_layout(
-            legend=dict(
-                orientation="h",  # Legenda orizzontale in alto
-                yanchor="bottom", y=1.02, xanchor="right", x=1
-            ),
-            margin=dict(l=20, r=20, t=20, b=20),  # Margini stretti per usare tutto lo schermo
-            xaxis_title=None,
-            yaxis_title=None,
-            showlegend=True
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
+            margin=dict(l=20, r=20, t=20, b=20), xaxis_title=None, yaxis_title=None, showlegend=True
         )
         st.plotly_chart(fig_line, use_container_width=True)
 
         st.markdown("---")
 
-        # --- 3. GRAFICO RADAR (Stile Videogioco) ---
-        #
-
-
+        # --- 3. GRAFICO RADAR (VITTORIE/BASKET/DARTS) ---
         st.subheader("🕹️ Stile di Gioco")
-        st.caption("Confronto abilità totali")
 
-        # Calcolo totali skill
-        skill_totals = {p: {"KO": 0, "Basket": 0, "Darts": 0} for p in players}
+        style_totals = {p: {"Wins": 0, "Basket": 0, "Darts": 0} for p in players}
+
         for g_data in data["giornate"].values():
             for i, p in enumerate(players):
-                skill_totals[p]["KO"] += g_data["ko"][i]
-                skill_totals[p]["Basket"] += g_data["basket"][i]
-                skill_totals[p]["Darts"] += g_data["darts"][i]
+                style_totals[p]["Basket"] += g_data["basket"][i]
+                style_totals[p]["Darts"] += g_data["darts"][i]
 
-        # Creazione Radar Chart con Graph Objects (più flessibile di Express)
-        categories = ['K.O. Inflitti', 'Canestri', 'Freccette']
+                # Conta le vittorie (ORA VALGONO 4 PUNTI)
+                wins_today = 0
+                for race_scores in g_data["races"].values():
+                    if race_scores[i] == 4:  # <-- AGGIORNATO PER IL NUOVO PUNTEGGIO
+                        wins_today += 1
+                style_totals[p]["Wins"] += wins_today
 
-        # Selettore giocatore per non sovrapporre troppo su mobile
+        categories = ['Vittorie (1° Posti)', 'Canestri', 'Freccette']
         selected_player_radar = st.selectbox("Analizza Giocatore:", players)
 
         vals = [
-            skill_totals[selected_player_radar]["KO"],
-            skill_totals[selected_player_radar]["Basket"],
-            skill_totals[selected_player_radar]["Darts"]
+            style_totals[selected_player_radar]["Wins"],
+            style_totals[selected_player_radar]["Basket"],
+            style_totals[selected_player_radar]["Darts"]
         ]
-
-        # Normalizziamo per rendere il grafico bello (scala 0-100 fittizia per riempire il triangolo)
-        # Ma qui usiamo i valori grezzi per onestà
 
         fig_radar = go.Figure()
         fig_radar.add_trace(go.Scatterpolar(
-            r=vals,
-            theta=categories,
-            fill='toself',
-            name=selected_player_radar,
-            line_color='#e0bc00'  # Color oro
+            r=vals, theta=categories, fill='toself', name=selected_player_radar, line_color='#e0bc00'
         ))
 
         fig_radar.update_layout(
-            polar=dict(
-                radialaxis=dict(
-                    visible=True,
-                    range=[0, max(max(vals, default=10), 15)]  # Scala dinamica
-                )),
-            showlegend=False,
-            margin=dict(l=40, r=40, t=20, b=20)
+            polar=dict(radialaxis=dict(visible=True, range=[0, max(max(vals, default=5), 5)])),
+            showlegend=False, margin=dict(l=40, r=40, t=20, b=20)
         )
-
         st.plotly_chart(fig_radar, use_container_width=True)
 
     else:
@@ -423,40 +378,24 @@ with tab6:
         st.markdown("**Impostazioni gioco:**")
         st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
-        st.markdown("**Punteggi Gara:**")
+        st.markdown("**Punteggi Gara (Short):**")
         st.markdown(
-            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **10** |\n| 🥈 2° | **7** |\n| 🥉 3° | **4** |\n| 💩 4° | **2** |")
+            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **4** |\n| 🥈 2° | **3** |\n| 🥉 3° | **2** |\n| 💩 4° | **1** |")
 
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
-    Al termine delle gare, si svolgono le prove fisiche:
-    * **🏀 Canestro (Max 20pt):** 10 tiri. (Canestro semplice: **1pt**, Canestro speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
-    * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
+    * **🏀 Canestro (Max 20pt):** 10 tiri. (Semplice: **1pt**, Speciale: **2pt**)
+    * **🎯 Freccette (Max 10pt):** 6 lanci. (Punteggi a fasce)
     """)
 
     st.divider()
     st.subheader("4. ⚖️ Il Calcolo della Classifica (MEDIA PUNTI)")
-    st.info("""
-    Per garantire equità in caso di assenze, vince chi ha la **MEDIA PUNTI** più alta, non il totale assoluto.
-    """)
     st.latex(r"\text{Media Punti} = \frac{\text{Totale Punti Accumulati}}{\text{Numero di Giornate Giocate}}")
-    st.markdown("""
-    * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
-    * **Pareggi:** In caso di parità di media, vince chi ha inflitto più **K.O.** totali.
-    """)
 
     st.divider()
-    st.subheader("5. 📈 Statistiche e Forma Attuale")
-    st.markdown("""
-    Nella tab **Statistiche**, la voce "Forma Attuale" indica l'impatto dell'ultima partita sulla tua carriera.
-    """)
-    st.markdown("**Come si calcola il Delta (il numero piccolo):**")
+    st.subheader("5. 📈 Statistiche")
+    st.markdown("**Forma Attuale (Delta):**")
     st.latex(r"\text{Delta} = \text{Media Oggi} - \text{Media Ieri}")
-
     col_info1, col_info2 = st.columns(2)
-    with col_info1:
-        st.success(
-            "**🟢 Verde (+):**\n\nLa tua prestazione odierna è stata **superiore** alla tua media storica. Hai alzato il livello!")
-    with col_info2:
-        st.error(
-            "**🔴 Rosso (-):**\n\nLa tua prestazione odierna è stata **inferiore** alla tua media storica. Hai abbassato la tua media.")
+    with col_info1: st.success("**🟢 Verde (+):** Miglioramento")
+    with col_info2: st.error("**🔴 Rosso (-):** Peggioramento")
