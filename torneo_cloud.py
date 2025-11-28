@@ -181,7 +181,7 @@ with tab2:
         with c1:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    # AGGIORNATO MAX_VALUE A 30 PER IL NUOVO SCORE
+                    # MAX VALUE 30
                     v = st.number_input(f"Basket {p}", max_value=30, value=day_data["basket"][i], key=f"bsk_{i}")
                     if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
         with c2:
@@ -275,7 +275,7 @@ with tab5:
     st.header("📱 Statistiche Rapide")
 
     if len(data["giornate"]) > 0:
-        # --- 1. LE "FIGURINE" ---
+        # --- 1. LE "FIGURINE" (Forma ultime 3 gare) ---
         st.subheader("🔥 Forma Attuale (Ultime 3 Presenze)")
         cols = st.columns(2)
 
@@ -341,39 +341,81 @@ with tab5:
 
         st.markdown("---")
 
-        # --- 3. GRAFICO RADAR ---
-        st.subheader("🕹️ Stile di Gioco")
+        # --- 3. GRAFICO RADAR (NORMALIZZATO IN %) ---
+        st.subheader("🕹️ Stile di Gioco (Efficienza %)")
+        st.caption("Confronto proporzionale: quanto sei vicino alla perfezione in ogni categoria?")
 
-        style_totals = {p: {"Wins": 0, "Basket": 0, "Darts": 0} for p in players}
+        # Inizializziamo i contatori per i totali reali e i massimi possibili
+        # "Wins": 12 possibili per giornata
+        # "Basket": 30 possibili per giornata
+        # "Darts": 10 possibili per giornata
+
+        style_stats = {p: {
+            "Wins_Actual": 0, "Wins_Max": 0,
+            "Basket_Actual": 0, "Basket_Max": 0,
+            "Darts_Actual": 0, "Darts_Max": 0
+        } for p in players}
 
         for g_data in data["giornate"].values():
             for i, p in enumerate(players):
-                style_totals[p]["Basket"] += g_data["basket"][i]
-                style_totals[p]["Darts"] += g_data["darts"][i]
+                # Se il giocatore era presente, incrementiamo i suoi contatori e i massimi possibili
+                if not g_data.get("absent", [False] * 4)[i]:
+                    # Basket
+                    style_stats[p]["Basket_Actual"] += g_data["basket"][i]
+                    style_stats[p]["Basket_Max"] += 30  # Max giornaliero basket
 
-                wins_today = 0
-                for race_scores in g_data["races"].values():
-                    if race_scores[i] == 4:
-                        wins_today += 1
-                style_totals[p]["Wins"] += wins_today
+                    # Darts
+                    style_stats[p]["Darts_Actual"] += g_data["darts"][i]
+                    style_stats[p]["Darts_Max"] += 10  # Max giornaliero darts
 
-        categories = ['Vittorie (1° Posti)', 'Canestri', 'Freccette']
+                    # Wins (Conta i primi posti)
+                    wins_today = 0
+                    for race_scores in g_data["races"].values():
+                        if race_scores[i] == 4:
+                            wins_today += 1
+                    style_stats[p]["Wins_Actual"] += wins_today
+                    style_stats[p]["Wins_Max"] += 12  # Max vittorie possibili (12 gare)
+
+        categories = ['Vittorie (1°)', 'Canestri', 'Freccette']
         selected_player_radar = st.selectbox("Analizza Giocatore:", players)
 
-        vals = [
-            style_totals[selected_player_radar]["Wins"],
-            style_totals[selected_player_radar]["Basket"],
-            style_totals[selected_player_radar]["Darts"]
+        # Calcolo percentuali (Gestione divisione per zero se uno non ha mai giocato)
+        stats = style_stats[selected_player_radar]
+
+        perc_wins = (stats["Wins_Actual"] / stats["Wins_Max"] * 100) if stats["Wins_Max"] > 0 else 0
+        perc_basket = (stats["Basket_Actual"] / stats["Basket_Max"] * 100) if stats["Basket_Max"] > 0 else 0
+        perc_darts = (stats["Darts_Actual"] / stats["Darts_Max"] * 100) if stats["Darts_Max"] > 0 else 0
+
+        vals_perc = [perc_wins, perc_basket, perc_darts]
+
+        # Per il tooltip mostriamo anche i valori veri
+        hover_text = [
+            f"{stats['Wins_Actual']} su {stats['Wins_Max']} possibili",
+            f"{stats['Basket_Actual']} su {stats['Basket_Max']} possibili",
+            f"{stats['Darts_Actual']} su {stats['Darts_Max']} possibili"
         ]
 
         fig_radar = go.Figure()
         fig_radar.add_trace(go.Scatterpolar(
-            r=vals, theta=categories, fill='toself', name=selected_player_radar, line_color='#e0bc00'
+            r=vals_perc,
+            theta=categories,
+            fill='toself',
+            name=selected_player_radar,
+            line_color='#e0bc00',
+            text=hover_text,
+            hovertemplate="%{theta}: %{r:.1f}%<br>(%{text})<extra></extra>"
         ))
 
         fig_radar.update_layout(
-            polar=dict(radialaxis=dict(visible=True, range=[0, max(max(vals, default=5), 5)])),
-            showlegend=False, margin=dict(l=40, r=40, t=20, b=20)
+            polar=dict(
+                radialaxis=dict(
+                    visible=True,
+                    range=[0, 100],  # Scala fissa 0-100%
+                    ticksuffix="%"
+                )
+            ),
+            showlegend=False,
+            margin=dict(l=40, r=40, t=20, b=20)
         )
         st.plotly_chart(fig_radar, use_container_width=True)
 
@@ -410,7 +452,7 @@ with tab6:
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
         Al termine delle gare, si svolgono le prove fisiche:
-        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Cotone: **2pt**, Speciale: **3pt**)
+        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Rete: **2pt**, Speciale: **3pt**)
         * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
         """)
 
