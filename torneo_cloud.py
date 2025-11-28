@@ -33,7 +33,6 @@ def load_data():
         for d in data["giornate"].values():
             if "absent" not in d:
                 d["absent"] = [False] * 4
-            # Retro-compatibilità: se i vecchi dati hanno "ko", non fa nulla, li ignoreremo
         return data
     except Exception as e:
         st.error(f"Errore Database: {e}")
@@ -90,7 +89,6 @@ with st.sidebar:
             next_num = max(existing_nums) + 1 if existing_nums else 1
             new_day_key = f"Giornata {next_num}"
 
-            # NOTA: Rimosso "ko" dalla struttura dati
             data["giornate"][new_day_key] = {
                 "races": {f"Gara {i + 1}": [0] * 4 for i in range(12)},
                 "basket": [0] * 4, "darts": [0] * 4, "absent": [False] * 4
@@ -118,7 +116,6 @@ with st.sidebar:
                 if is_absent != day_data_ref["absent"][i]:
                     day_data_ref["absent"][i] = is_absent
                     if is_absent:
-                        # Reset punteggi se assente
                         day_data_ref["basket"][i] = 0;
                         day_data_ref["darts"][i] = 0
                         for r in range(12): day_data_ref["races"][f"Gara {r + 1}"][i] = 0
@@ -180,12 +177,12 @@ with tab2:
     st.header("Skill & Bonus")
     if st.session_state.is_admin:
         updated_sk = False
-        # Rimosso colonna KO, ora solo 2 colonne
         c1, c2 = st.columns(2)
         with c1:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    v = st.number_input(f"Basket {p}", max_value=20, value=day_data["basket"][i], key=f"bsk_{i}")
+                    # AGGIORNATO MAX_VALUE A 30 PER IL NUOVO SCORE
+                    v = st.number_input(f"Basket {p}", max_value=30, value=day_data["basket"][i], key=f"bsk_{i}")
                     if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
         with c2:
             for i, p in enumerate(players):
@@ -208,12 +205,10 @@ with tab3:
 
     for i, p in enumerate(players):
         if not absent_flags[i]:
-            # Recupera tutti i punteggi delle gare per questo giocatore
             race_points = [day_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
             mk8_sum = sum(race_points)
             skill = day_data["basket"][i] + day_data["darts"][i]
 
-            # --- PERFECT SCORE CHECK ---
             bonus_grand_slam = 0
             if race_points.count(4) == 12:
                 bonus_grand_slam = 10
@@ -230,7 +225,6 @@ with tab3:
             })
 
     if d_stats:
-        # Ordinamento senza KO
         df_d = pd.DataFrame(d_stats).sort_values(by=["TOTALE"], ascending=False).reset_index(drop=True)
         df_d.index += 1
         st.dataframe(df_d, use_container_width=True)
@@ -266,7 +260,6 @@ with tab4:
         final_list.append(
             {"Giocatore": p, "PG": pg, "Totale Punti": s["Totale"], "MEDIA PUNTI": media})
 
-    # Ordinamento: Media Punti, poi Totale Punti
     df_gen = pd.DataFrame(final_list).sort_values(by=["MEDIA PUNTI", "Totale Punti"], ascending=False).reset_index(
         drop=True)
     df_gen.index += 1
@@ -282,7 +275,7 @@ with tab5:
     st.header("📱 Statistiche Rapide")
 
     if len(data["giornate"]) > 0:
-        # --- 1. LE "FIGURINE" (Forma ultime 3 gare) ---
+        # --- 1. LE "FIGURINE" ---
         st.subheader("🔥 Forma Attuale (Ultime 3 Presenze)")
         cols = st.columns(2)
 
@@ -348,7 +341,7 @@ with tab5:
 
         st.markdown("---")
 
-        # --- 3. GRAFICO RADAR (VITTORIE/BASKET/DARTS) ---
+        # --- 3. GRAFICO RADAR ---
         st.subheader("🕹️ Stile di Gioco")
 
         style_totals = {p: {"Wins": 0, "Basket": 0, "Darts": 0} for p in players}
@@ -417,7 +410,7 @@ with tab6:
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
         Al termine delle gare, si svolgono le prove fisiche:
-        * **🏀 Canestro (Max 20pt):** 10 tiri. (Semplice: **1pt**, Speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
+        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Rete: **2pt**, Speciale: **3pt**)
         * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
         """)
 
@@ -429,7 +422,7 @@ with tab6:
     st.latex(r"\text{Media Punti} = \frac{\text{Totale Punti Accumulati}}{\text{Numero di Giornate Giocate}}")
     st.markdown("""
         * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
-        * **Pareggi:** In caso di parità di media, vince chi ha fatto più **Punti Totali** (premio presenza).
+        * **Pareggi:** In caso di parità di media, vince chi ha fatto più **Punti Totali**.
         """)
 
     st.divider()
