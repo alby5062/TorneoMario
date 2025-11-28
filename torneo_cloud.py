@@ -410,7 +410,7 @@ with tab6:
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
         Al termine delle gare, si svolgono le prove fisiche:
-        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Rete: **2pt**, Speciale: **3pt**)
+        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Cotone: **2pt**, Speciale: **3pt**)
         * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
         """)
 
