@@ -289,44 +289,60 @@ with tab5:
     st.header("📱 Statistiche Rapide")
 
     if len(data["giornate"]) > 0:
-        # --- 1. LE "FIGURINE" ---
-        st.subheader("🔥 Forma Attuale")
+        # --- 1. LE "FIGURINE" (Forma ultime 3 gare) ---
+        st.subheader("🔥 Forma Attuale (Ultime 3 Presenze)")
         cols = st.columns(2)
 
         for p in players:
-            tot = 0;
-            count = 0
-            prev_tot = 0;
-            prev_count = 0
-            days_list = giornate_sorted
+            # 1. Costruiamo lo storico di questo giocatore (solo presenze)
+            scores_history = []
 
-            for d in days_list:
+            # Ordiniamo le giornate per essere sicuri della cronologia
+            for d in giornate_sorted:
                 d_data = data["giornate"][d]
-                if not d_data.get("absent", [False] * 4)[players.index(p)]:
-                    # Calcolo Punti Giornalieri (Incluso Grand Slam)
-                    r_pts = [d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)]
+                idx = players.index(p)
+
+                # Se il giocatore era presente
+                if not d_data.get("absent", [False] * 4)[idx]:
+                    # Calcolo Punti Totali della giornata (Gare + Skill + Grand Slam)
+                    r_pts = [d_data["races"][f"Gara {r + 1}"][idx] for r in range(12)]
                     bonus = 10 if r_pts.count(4) == 12 else 0
+                    day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus
 
-                    p_pts = sum(r_pts) + d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)] + bonus
-                    tot += p_pts;
-                    count += 1
+                    scores_history.append(day_total)
 
-            for d in days_list[:-1]:
-                d_data = data["giornate"][d]
-                if not d_data.get("absent", [False] * 4)[players.index(p)]:
-                    r_pts = [d_data["races"][f"Gara {r + 1}"][players.index(p)] for r in range(12)]
-                    bonus = 10 if r_pts.count(4) == 12 else 0
+            # 2. Calcoliamo la Media delle Ultime 3 (Current Form)
+            if not scores_history:
+                curr_form = 0
+                diff = 0
+            else:
+                # Prende le ultime 3 (o meno se ne ha giocate meno di 3)
+                last_3_games = scores_history[-3:]
+                curr_form = sum(last_3_games) / len(last_3_games)
 
-                    p_pts = sum(r_pts) + d_data["basket"][players.index(p)] + d_data["darts"][players.index(p)] + bonus
-                    prev_tot += p_pts;
-                    prev_count += 1
+                # 3. Calcoliamo la Media Precedente (Sliding Window) per il Delta
+                # Esempio: Storico [10, 20, 30, 40]
+                # Curr (ultime 3) = [20, 30, 40] -> Media 30
+                # Prev (escludendo l'ultima, prendo le 3 prima) = [10, 20, 30] -> Media 20
+                # Delta = +10
 
-            curr_avg = tot / count if count > 0 else 0
-            prev_avg = prev_tot / prev_count if prev_count > 0 else 0
-            diff = curr_avg - prev_avg if prev_count > 0 else 0
+                if len(scores_history) > 1:
+                    # Prende la lista escludendo l'ultima partita, e di quella lista prende le ultime 3
+                    prev_3_games = scores_history[:-1][-3:]
+                    prev_form = sum(prev_3_games) / len(prev_3_games)
+                    diff = curr_form - prev_form
+                else:
+                    diff = 0
 
+            # Visualizzazione
             with cols[players.index(p) % 2]:
-                st.metric(label=p, value=f"{curr_avg:.2f}", delta=f"{diff:.2f}", delta_color="normal")
+                st.metric(
+                    label=p,
+                    value=f"{curr_form:.1f}",
+                    delta=f"{diff:.1f}",
+                    delta_color="normal",
+                    help="Media punti basata solo sulle ultime 3 giornate giocate."
+                )
 
         st.markdown("---")
 
@@ -431,7 +447,7 @@ with tab6:
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
         Al termine delle gare, si svolgono le prove fisiche:
-        * **🏀 Canestro (Max 20pt):** 10 tiri. (Canestro semplice: **1pt**, Canestro speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
+        * **🏀 Canestro (Max 20pt):** 10 tiri. (Semplice: **1pt**, Speciale: **2pt**) ‼️️Per i tiri semplici non vale il tiro da sotto
         * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
         """)
 
@@ -449,16 +465,16 @@ with tab6:
     st.divider()
     st.subheader("5. 📈 Statistiche e Forma Attuale")
     st.markdown("""
-        Nella tab **Statistiche**, la voce "Forma Attuale" indica l'impatto dell'ultima partita sulla tua carriera.
+        La **"Forma Attuale"** (il numero nella card) considera solo le **ultime 3 giornate giocate**.
+        Serve a capire chi sta giocando meglio *recentemente*, ignorando il passato remoto.
         """)
-    st.markdown("**Come si calcola il Delta (il numero piccolo):**")
-    st.latex(r"\text{Delta} = \text{Media Oggi} - \text{Media Ieri}")
+    st.markdown("**Come si calcola il Delta (la freccina):**")
+    st.latex(r"\text{Delta} = \text{Media (Ultime 3)} - \text{Media (Precedenti 3)}")
 
     col_info1, col_info2 = st.columns(2)
     with col_info1:
         st.success(
-            "**🟢 Verde (+):**\n\nLa tua prestazione odierna è stata **superiore** alla tua media storica. Hai alzato il livello!")
+            "**🟢 Verde (+):**\n\nStai giocando meglio nelle ultime 3 gare rispetto al periodo precedente.")
     with col_info2:
         st.error(
-            "**🔴 Rosso (-):**\n\nLa tua prestazione odierna è stata **inferiore** alla tua media storica. Hai abbassato la tua media.")
-
+            "**🔴 Rosso (-):**\n\nSei in calo. Le tue ultime 3 gare sono peggiori delle 3 precedenti.")
