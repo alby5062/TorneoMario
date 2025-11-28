@@ -33,6 +33,7 @@ def load_data():
         for d in data["giornate"].values():
             if "absent" not in d:
                 d["absent"] = [False] * 4
+            # Retro-compatibilità: se i vecchi dati hanno "ko", non fa nulla, li ignoreremo
         return data
     except Exception as e:
         st.error(f"Errore Database: {e}")
@@ -89,9 +90,10 @@ with st.sidebar:
             next_num = max(existing_nums) + 1 if existing_nums else 1
             new_day_key = f"Giornata {next_num}"
 
+            # NOTA: Rimosso "ko" dalla struttura dati
             data["giornate"][new_day_key] = {
                 "races": {f"Gara {i + 1}": [0] * 4 for i in range(12)},
-                "ko": [0] * 4, "basket": [0] * 4, "darts": [0] * 4, "absent": [False] * 4
+                "basket": [0] * 4, "darts": [0] * 4, "absent": [False] * 4
             }
             save_data(data)
             st.toast(f"{new_day_key} Creata!", icon="✅")
@@ -116,7 +118,7 @@ with st.sidebar:
                 if is_absent != day_data_ref["absent"][i]:
                     day_data_ref["absent"][i] = is_absent
                     if is_absent:
-                        day_data_ref["ko"][i] = 0;
+                        # Reset punteggi se assente
                         day_data_ref["basket"][i] = 0;
                         day_data_ref["darts"][i] = 0
                         for r in range(12): day_data_ref["races"][f"Gara {r + 1}"][i] = 0
@@ -178,28 +180,25 @@ with tab2:
     st.header("Skill & Bonus")
     if st.session_state.is_admin:
         updated_sk = False
-        c1, c2, c3 = st.columns(3)
+        # Rimosso colonna KO, ora solo 2 colonne
+        c1, c2 = st.columns(2)
         with c1:
-            for i, p in enumerate(players):
-                if not absent_flags[i]:
-                    v = st.number_input(f"KO {p}", value=day_data["ko"][i], key=f"ko_{i}")
-                    if v != day_data["ko"][i]: day_data["ko"][i] = v; updated_sk = True
-        with c2:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
                     v = st.number_input(f"Basket {p}", max_value=20, value=day_data["basket"][i], key=f"bsk_{i}")
                     if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
-        with c3:
+        with c2:
             for i, p in enumerate(players):
                 if not absent_flags[i]:
                     v = st.number_input(f"Darts {p}", max_value=10, value=day_data["darts"][i], key=f"drt_{i}")
                     if v != day_data["darts"][i]: day_data["darts"][i] = v; updated_sk = True
         if updated_sk: save_data(data)
+
     sk_disp = []
     for i, p in enumerate(players):
         status = "ASSENTE" if absent_flags[i] else "Presente"
-        sk_disp.append({"Giocatore": p, "Stato": status, "KO": day_data["ko"][i], "Basket": day_data["basket"][i],
-                        "Darts": day_data["darts"][i]})
+        sk_disp.append(
+            {"Giocatore": p, "Stato": status, "Basket": day_data["basket"][i], "Darts": day_data["darts"][i]})
     st.dataframe(pd.DataFrame(sk_disp), use_container_width=True)
 
 # TAB 3: GIORNATA
@@ -215,11 +214,10 @@ with tab3:
             skill = day_data["basket"][i] + day_data["darts"][i]
 
             # --- PERFECT SCORE CHECK ---
-            # Se ha fatto 12 volte "4" (cioè 12 primi posti)
             bonus_grand_slam = 0
             if race_points.count(4) == 12:
                 bonus_grand_slam = 10
-                perfect_score_player = p  # Salviamo il nome per festeggiarlo
+                perfect_score_player = p
 
             total = mk8_sum + skill + bonus_grand_slam
 
@@ -228,16 +226,15 @@ with tab3:
                 "MK8": mk8_sum,
                 "Skill": skill,
                 "Bonus 12/12": f"+{bonus_grand_slam}" if bonus_grand_slam > 0 else "-",
-                "KO": day_data["ko"][i],
                 "TOTALE": total
             })
 
     if d_stats:
-        df_d = pd.DataFrame(d_stats).sort_values(by=["TOTALE", "KO"], ascending=False).reset_index(drop=True)
+        # Ordinamento senza KO
+        df_d = pd.DataFrame(d_stats).sort_values(by=["TOTALE"], ascending=False).reset_index(drop=True)
         df_d.index += 1
         st.dataframe(df_d, use_container_width=True)
 
-        # Festeggiamenti speciali
         if perfect_score_player:
             st.balloons()
             st.markdown(f"## 🤯 INCREDIBILE! {perfect_score_player} HA FATTO 12 SU 12! (+10 PUNTI)")
@@ -249,32 +246,28 @@ with tab3:
 # TAB 4: GENERALE
 with tab4:
     st.header("🌍 CLASSIFICA GENERALE")
-    gen_stats = {p: {"Totale": 0, "KO": 0, "Presenze": 0} for p in players}
+    gen_stats = {p: {"Totale": 0, "Presenze": 0} for p in players}
     for g_data in data["giornate"].values():
         g_absent = g_data.get("absent", [False] * 4)
         for i, p in enumerate(players):
             if not g_absent[i]:
-                # Calcolo Punti Gara
                 race_points = [g_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
                 mk8 = sum(race_points)
-
-                # Check Grand Slam (12 vittorie da 4 punti)
                 grand_slam = 10 if race_points.count(4) == 12 else 0
-
                 skill = g_data["basket"][i] + g_data["darts"][i]
-                ko = g_data["ko"][i]
 
                 gen_stats[p]["Presenze"] += 1
                 gen_stats[p]["Totale"] += (mk8 + skill + grand_slam)
-                gen_stats[p]["KO"] += ko
 
     final_list = []
     for p, s in gen_stats.items():
         pg = s["Presenze"]
         media = round(s["Totale"] / pg, 2) if pg > 0 else 0.0
         final_list.append(
-            {"Giocatore": p, "PG": pg, "Totale Punti": s["Totale"], "MEDIA PUNTI": media, "Totale KO": s["KO"]})
-    df_gen = pd.DataFrame(final_list).sort_values(by=["MEDIA PUNTI", "Totale KO"], ascending=False).reset_index(
+            {"Giocatore": p, "PG": pg, "Totale Punti": s["Totale"], "MEDIA PUNTI": media})
+
+    # Ordinamento: Media Punti, poi Totale Punti
+    df_gen = pd.DataFrame(final_list).sort_values(by=["MEDIA PUNTI", "Totale Punti"], ascending=False).reset_index(
         drop=True)
     df_gen.index += 1
     st.dataframe(
@@ -284,7 +277,7 @@ with tab4:
         st.markdown(f"### 👑 Leader: <span style='color:#e0bc00'>{df_gen.iloc[0]['Giocatore']}</span>",
                     unsafe_allow_html=True)
 
-# TAB 5: GRAFICI MOBILE FRIENDLY
+# TAB 5: STATISTICHE
 with tab5:
     st.header("📱 Statistiche Rapide")
 
@@ -294,55 +287,32 @@ with tab5:
         cols = st.columns(2)
 
         for p in players:
-            # 1. Costruiamo lo storico di questo giocatore (solo presenze)
             scores_history = []
-
-            # Ordiniamo le giornate per essere sicuri della cronologia
             for d in giornate_sorted:
                 d_data = data["giornate"][d]
                 idx = players.index(p)
-
-                # Se il giocatore era presente
                 if not d_data.get("absent", [False] * 4)[idx]:
-                    # Calcolo Punti Totali della giornata (Gare + Skill + Grand Slam)
                     r_pts = [d_data["races"][f"Gara {r + 1}"][idx] for r in range(12)]
                     bonus = 10 if r_pts.count(4) == 12 else 0
                     day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus
-
                     scores_history.append(day_total)
 
-            # 2. Calcoliamo la Media delle Ultime 3 (Current Form)
             if not scores_history:
-                curr_form = 0
+                curr_form = 0;
                 diff = 0
             else:
-                # Prende le ultime 3 (o meno se ne ha giocate meno di 3)
                 last_3_games = scores_history[-3:]
                 curr_form = sum(last_3_games) / len(last_3_games)
 
-                # 3. Calcoliamo la Media Precedente (Sliding Window) per il Delta
-                # Esempio: Storico [10, 20, 30, 40]
-                # Curr (ultime 3) = [20, 30, 40] -> Media 30
-                # Prev (escludendo l'ultima, prendo le 3 prima) = [10, 20, 30] -> Media 20
-                # Delta = +10
-
                 if len(scores_history) > 1:
-                    # Prende la lista escludendo l'ultima partita, e di quella lista prende le ultime 3
                     prev_3_games = scores_history[:-1][-3:]
                     prev_form = sum(prev_3_games) / len(prev_3_games)
                     diff = curr_form - prev_form
                 else:
                     diff = 0
 
-            # Visualizzazione
             with cols[players.index(p) % 2]:
-                st.metric(
-                    label=p,
-                    value=f"{curr_form:.1f}",
-                    delta=f"{diff:.1f}",
-                    delta_color="normal",
-                    help="Media punti basata solo sulle ultime 3 giornate giocate."
-                )
+                st.metric(label=p, value=f"{curr_form:.1f}", delta=f"{diff:.1f}", delta_color="normal")
 
         st.markdown("---")
 
@@ -378,7 +348,7 @@ with tab5:
 
         st.markdown("---")
 
-        # --- 3. GRAFICO RADAR ---
+        # --- 3. GRAFICO RADAR (VITTORIE/BASKET/DARTS) ---
         st.subheader("🕹️ Stile di Gioco")
 
         style_totals = {p: {"Wins": 0, "Basket": 0, "Darts": 0} for p in players}
@@ -459,7 +429,7 @@ with tab6:
     st.latex(r"\text{Media Punti} = \frac{\text{Totale Punti Accumulati}}{\text{Numero di Giornate Giocate}}")
     st.markdown("""
         * **Assenze:** Se un giocatore è assente, quella giornata non conta per la sua media (non viene penalizzato).
-        * **Pareggi:** In caso di parità di media, vince chi ha inflitto più **K.O.** totali.
+        * **Pareggi:** In caso di parità di media, vince chi ha fatto più **Punti Totali** (premio presenza).
         """)
 
     st.divider()
