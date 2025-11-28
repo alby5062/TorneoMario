@@ -466,7 +466,7 @@ with tab6:
     st.subheader("5. 📈 Statistiche e Forma Attuale")
     st.markdown("""
         La **"Forma Attuale"** (il numero nella card) considera solo le **ultime 3 giornate giocate**.
-        Serve a capire chi sta giocando meglio *recentemente*, ignorando il passato remoto.
+        Serve a capire chi sta giocando meglio *recentemente*, ignorando il passato.
         """)
     st.markdown("**Come si calcola il Delta (la freccina):**")
     st.latex(r"\text{Delta} = \text{Media (Ultime 3)} - \text{Media (Precedenti 3)}")
