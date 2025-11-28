@@ -463,18 +463,28 @@ with tab6:
         """)
 
     st.divider()
-    st.subheader("5. 📈 Statistiche e Forma Attuale")
+    st.subheader("5. 📈 Statistiche: La Forma Attuale")
     st.markdown("""
-        La **"Forma Attuale"** (il numero nella card) considera solo le **ultime 3 giornate giocate**.
-        Serve a capire chi sta giocando meglio *recentemente*, ignorando il passato.
+        Il numero nella card "Forma Attuale" utilizza il metodo della **Finestra Mobile (Sliding Window)** sulle ultime 3 presenze.
         """)
-    st.markdown("**Come si calcola il Delta (la freccina):**")
-    st.latex(r"\text{Delta} = \text{Media (Ultime 3)} - \text{Media (Precedenti 3)}")
 
-    col_info1, col_info2 = st.columns(2)
-    with col_info1:
-        st.success(
-            "**🟢 Verde (+):**\n\nStai giocando meglio nelle ultime 3 gare rispetto al periodo precedente.")
-    with col_info2:
-        st.error(
-            "**🔴 Rosso (-):**\n\nSei in calo. Le tue ultime 3 gare sono peggiori delle 3 precedenti.")
+    st.markdown("### 🧮 Esempio Pratico")
+    st.markdown("Immagina di aver fatto questi punteggi nelle tue ultime 4 serate:")
+    st.code("Giornata 1: 80 pt\nGiornata 2: 90 pt\nGiornata 3: 90 pt\nGiornata 4 (Oggi): 120 pt (Seratona!)")
+
+    st.markdown("**1. Calcolo Media Ieri (G1+G2+G3):**")
+    st.latex(r"\text{Media Ieri} = \frac{80 + 90 + 90}{3} = \mathbf{86.6}")
+
+    st.markdown("**2. Calcolo Media Oggi (G2+G3+G4):**")
+    st.latex(r"\text{Media Oggi} = \frac{90 + 90 + 120}{3} = \mathbf{100.0}")
+
+    st.markdown("**3. Il Delta (La Freccina):**")
+    st.latex(r"\text{Delta} = 100.0 - 86.6 = \mathbf{+13.4} \quad (\text{Verde})")
+
+    st.success("""
+    **Interpretazione:**
+    La logica è: **"La nuova partita (G4) è riuscita ad alzare la mia media recente sostituendo la partita più vecchia (G1)?"**
+
+    * Se la gara di oggi è migliore di quella di 4 volte fa (che esce dal conteggio), la tua forma sale.
+    * Se è peggiore, la tua forma scende.
+    """)
