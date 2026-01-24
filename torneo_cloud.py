@@ -160,7 +160,7 @@ with tab1:
                 disabled = absent_flags[i]
                 label = f"{player} (ASSENTE)" if disabled else player
                 current_label = REV_POINTS_MAP.get(current_vals[i], "Nessuno/0")
-                val = st.selectbox(label, options=["1° Posto", "2° Posto", "3° Posto", "4° Posto", "Nessuno/0"],
+                val = st.radio(label, options=["1° Posto", "2° Posto", "3° Posto", "4° Posto", "Nessuno/0"],
                                    index=["1° Posto", "2° Posto", "3° Posto", "4° Posto", "Nessuno/0"].index(
                                        current_label),
                                    key=f"r_{race_num}_{i}", disabled=disabled)
