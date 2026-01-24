@@ -134,8 +134,10 @@ with st.sidebar:
                     st.rerun()
 
 # --- LOGICA PUNTEGGI ---
-POINTS_MAP = {"1° Posto": 4, "2° Posto": 3, "3° Posto": 2, "4° Posto": 1, "Nessuno/0": 0}
-REV_POINTS_MAP = {4: "1° Posto", 3: "2° Posto", 2: "3° Posto", 1: "4° Posto", 0: "Nessuno/0"}
+POINTS_MAP = {"1° Posto": 12, "2° Posto": 9, "3° Posto": 6, "4° Posto": 3, "Nessuno/0": 0}
+REV_POINTS_MAP = {12: "1° Posto", 9: "2° Posto", 6: "3° Posto", 3: "4° Posto", 0: "Nessuno/0"}
+# SKILL POINTS (Can map rank to points directly or reuse POINTS_MAP if keys match needed logic)
+SKILL_POINTS = {1: 12, 2: 9, 3: 6, 4: 3}
 
 if selected_day is None: st.stop()
 day_data = data["giornate"][selected_day]
@@ -175,27 +177,76 @@ with tab1:
 # TAB 2: SKILL
 with tab2:
     st.header("Skill & Bonus")
+    st.info("Punteggi: 1°=12, 2°=9, 3°=6, 4°=3. Bonus = +5 punti.")
+    
     if st.session_state.is_admin:
         updated_sk = False
         c1, c2 = st.columns(2)
+        
+        # BASKET
         with c1:
+            st.subheader("🏀 Basket")
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    # MAX VALUE 30
-                    v = st.number_input(f"Basket {p}", max_value=30, value=day_data["basket"][i], key=f"bsk_{i}")
-                    if v != day_data["basket"][i]: day_data["basket"][i] = v; updated_sk = True
+                    # Determine current rank/bonus from stored score if possible, or default to 4th/NoBonus
+                    # Since we store TOTAL points, we can't easily reverse engineer without stored state.
+                    # We will just show inputs to overwrite.
+                    st.markdown(f"**{p}**")
+                    col_rank, col_bonus = st.columns([2, 1])
+                    with col_rank:
+                        rank_bsk = st.selectbox(f"Posizione {p}", options=[1, 2, 3, 4], key=f"rank_bsk_{i}")
+                    with col_bonus:
+                        bonus_bsk = st.checkbox(f"Bonus (>=20pt)", key=f"bonus_bsk_{i}")
+                    
+                    calc_score = SKILL_POINTS[rank_bsk] + (5 if bonus_bsk else 0)
+                    # We only update if it looks like a NEW interaction or we trust the user inputs match current state.
+                    # Problem: on refresh, selectbox resets to default (index 0 -> 1st place) if we don't bind 'value' or 'index'.
+                    # But we don't store rank/bonus separately. 
+                    # DECISION: Just let the user overwrite. It shows "1" by default. 
+                    # Better: display current points next to it.
+                    st.caption(f"Salverà: {calc_score} pt (Attuale: {day_data['basket'][i]})")
+                    
+                    # We need a button to "Apply" or just apply if changed? 
+                    # Since we can't reconstruct state, let's add a "Salva" button per section or global?
+                    # Auto-update might be annoying if it resets to 12 pts immediately.
+                    
+        # DARTS
         with c2:
+            st.subheader("🎯 Freccette")
             for i, p in enumerate(players):
                 if not absent_flags[i]:
-                    v = st.number_input(f"Darts {p}", max_value=10, value=day_data["darts"][i], key=f"drt_{i}")
-                    if v != day_data["darts"][i]: day_data["darts"][i] = v; updated_sk = True
-        if updated_sk: save_data(data)
+                    st.markdown(f"**{p}**")
+                    col_rank_d, col_bonus_d = st.columns([2, 1])
+                    with col_rank_d:
+                        rank_drt = st.selectbox(f"Posizione {p}", options=[1, 2, 3, 4], key=f"rank_drt_{i}")
+                    with col_bonus_d:
+                        bonus_drt = st.checkbox(f"Bonus (<=3 Rnd)", key=f"bonus_drt_{i}")
+                    
+                    calc_score_d = SKILL_POINTS[rank_drt] + (5 if bonus_drt else 0)
+                    st.caption(f"Salverà: {calc_score_d} pt (Attuale: {day_data['darts'][i]})")
+
+        if st.button("💾 Salva Risultati Skill"):
+            # Apply Basket
+            for i, p in enumerate(players):
+                if not absent_flags[i]:
+                    # Retrieving values from session state using keys
+                    r_b = st.session_state[f"rank_bsk_{i}"]
+                    b_b = st.session_state[f"bonus_bsk_{i}"]
+                    day_data["basket"][i] = SKILL_POINTS[r_b] + (5 if b_b else 0)
+                    
+                    r_d = st.session_state[f"rank_drt_{i}"]
+                    b_d = st.session_state[f"bonus_drt_{i}"]
+                    day_data["darts"][i] = SKILL_POINTS[r_d] + (5 if b_d else 0)
+            
+            save_data(data)
+            st.success("Salvataggio completato!")
+            st.rerun()
 
     sk_disp = []
     for i, p in enumerate(players):
         status = "ASSENTE" if absent_flags[i] else "Presente"
         sk_disp.append(
-            {"Giocatore": p, "Stato": status, "Basket": day_data["basket"][i], "Darts": day_data["darts"][i]})
+            {"Giocatore": p, "Stato": status, "Basket (Pt)": day_data["basket"][i], "Darts (Pt)": day_data["darts"][i]})
     st.dataframe(pd.DataFrame(sk_disp), use_container_width=True)
 
 # TAB 3: GIORNATA
@@ -210,7 +261,7 @@ with tab3:
             skill = day_data["basket"][i] + day_data["darts"][i]
 
             bonus_grand_slam = 0
-            if race_points.count(4) == 12:
+            if race_points.count(12) == 12:
                 bonus_grand_slam = 10
                 perfect_score_player = p
 
@@ -247,7 +298,7 @@ with tab4:
             if not g_absent[i]:
                 race_points = [g_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
                 mk8 = sum(race_points)
-                grand_slam = 10 if race_points.count(4) == 12 else 0
+                grand_slam = 10 if race_points.count(12) == 12 else 0
                 skill = g_data["basket"][i] + g_data["darts"][i]
 
                 gen_stats[p]["Presenze"] += 1
@@ -286,7 +337,7 @@ with tab5:
                 idx = players.index(p)
                 if not d_data.get("absent", [False] * 4)[idx]:
                     r_pts = [d_data["races"][f"Gara {r + 1}"][idx] for r in range(12)]
-                    bonus = 10 if r_pts.count(4) == 12 else 0
+                    bonus = 10 if r_pts.count(12) == 12 else 0
                     day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus
                     scores_history.append(day_total)
 
@@ -323,7 +374,7 @@ with tab5:
             for i, p in enumerate(players):
                 if not d_absent[i]:
                     r_pts = [d_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
-                    bonus = 10 if r_pts.count(4) == 12 else 0
+                    bonus = 10 if r_pts.count(12) == 12 else 0
                     points_today = sum(r_pts) + d_data["basket"][i] + d_data["darts"][i] + bonus
 
                     cum_points[p] += points_today;
@@ -362,16 +413,16 @@ with tab5:
                 if not g_data.get("absent", [False] * 4)[i]:
                     # Basket
                     style_stats[p]["Basket_Actual"] += g_data["basket"][i]
-                    style_stats[p]["Basket_Max"] += 30  # Max giornaliero basket
+                    style_stats[p]["Basket_Max"] += 17  # Max giornaliero basket (12 + 5)
 
                     # Darts
                     style_stats[p]["Darts_Actual"] += g_data["darts"][i]
-                    style_stats[p]["Darts_Max"] += 10  # Max giornaliero darts
+                    style_stats[p]["Darts_Max"] += 17  # Max giornaliero darts (12 + 5)
 
                     # Wins (Conta i primi posti)
                     wins_today = 0
                     for race_scores in g_data["races"].values():
-                        if race_scores[i] == 4:
+                        if race_scores[i] == 12:
                             wins_today += 1
                     style_stats[p]["Wins_Actual"] += wins_today
                     style_stats[p]["Wins_Max"] += 12  # Max vittorie possibili (12 gare)
@@ -441,9 +492,9 @@ with tab6:
         st.markdown("**Impostazioni gioco:**")
         st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
-        st.markdown("**Punteggi Gara:**")
+        st.markdown("**Punteggi Gara (F1 Style):**")
         st.markdown(
-            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **4** |\n| 🥈 2° | **3** |\n| 🥉 3° | **2** |\n| 💩 4° | **1** |")
+            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **12** |\n| 🥈 2° | **9** |\n| 🥉 3° | **6** |\n| 💩 4° | **3** |")
 
     st.markdown("#### 🌟 Grand Slam (Perfect Score)")
     st.warning(
@@ -451,9 +502,19 @@ with tab6:
 
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
-        Al termine delle gare, si svolgono le prove fisiche:
-        * **🏀 Canestro (Max 30pt):** 10 tiri. (Normale: **1pt**, Solo Rete: **2pt**, Speciale: **3pt**)
-        * **🎯 Freccette (Max 10pt):** 6 lanci. (<=40: **0pt**, 41-60: **2pt**, 61-80: **4pt**, 81-100:**6pt**, 101-120: **8pt**, >120: **10pt**)
+        Al termine delle gare, si svolgono le prove fisiche.
+        Non si sommano i punti fatti, ma si stila una **Classifica** (12-9-6-3 punti).
+        
+        ### 🏀 Basket (5 Tiri Speciali)
+        * Ogni giocatore ha **5 tiri speciali**.
+        * **Bonus (+5 pt Classifica):** Se realizzi **>= 20 punti** reali.
+        * **Spareggio:** 5 tiri extra.
+        
+        ### 🎯 Freccette (101 -> 0)
+        * Si parte da **101** e si scende a **0 esatto**.
+        * **Regola "Fine Round":** Se uno chiude, gli altri finiscono il giro (possibili pareggi).
+        * **Bonus (+5 pt Classifica):** Se chiudi in **<= 3 round**.
+        * **Spareggio:** Partita veloce **51 -> 0**.
         """)
 
     st.divider()
