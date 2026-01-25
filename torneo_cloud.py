@@ -134,8 +134,8 @@ with st.sidebar:
                     st.rerun()
 
 # --- LOGICA PUNTEGGI ---
-POINTS_MAP = {"1° Posto": 12, "2° Posto": 9, "3° Posto": 6, "4° Posto": 3, "Nessuno/0": 0}
-REV_POINTS_MAP = {12: "1° Posto", 9: "2° Posto", 6: "3° Posto", 3: "4° Posto", 0: "Nessuno/0"}
+POINTS_MAP = {"1° Posto": 4, "2° Posto": 3, "3° Posto": 2, "4° Posto": 1, "Nessuno/0": 0}
+REV_POINTS_MAP = {4: "1° Posto", 3: "2° Posto", 2: "3° Posto", 1: "4° Posto", 0: "Nessuno/0"}
 # SKILL POINTS (Can map rank to points directly or reuse POINTS_MAP if keys match needed logic)
 SKILL_POINTS = {1: 12, 2: 9, 3: 6, 4: 3}
 
@@ -261,7 +261,7 @@ with tab3:
             skill = day_data["basket"][i] + day_data["darts"][i]
 
             bonus_grand_slam = 0
-            if race_points.count(12) == 12:
+            if race_points.count(4) == 12:
                 bonus_grand_slam = 10
                 perfect_score_player = p
 
@@ -298,7 +298,7 @@ with tab4:
             if not g_absent[i]:
                 race_points = [g_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
                 mk8 = sum(race_points)
-                grand_slam = 10 if race_points.count(12) == 12 else 0
+                grand_slam = 10 if race_points.count(4) == 12 else 0
                 skill = g_data["basket"][i] + g_data["darts"][i]
 
                 gen_stats[p]["Presenze"] += 1
@@ -337,7 +337,7 @@ with tab5:
                 idx = players.index(p)
                 if not d_data.get("absent", [False] * 4)[idx]:
                     r_pts = [d_data["races"][f"Gara {r + 1}"][idx] for r in range(12)]
-                    bonus = 10 if r_pts.count(12) == 12 else 0
+                    bonus = 10 if r_pts.count(4) == 12 else 0
                     day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus
                     scores_history.append(day_total)
 
@@ -422,7 +422,7 @@ with tab5:
                     # Wins (Conta i primi posti)
                     wins_today = 0
                     for race_scores in g_data["races"].values():
-                        if race_scores[i] == 12:
+                        if race_scores[i] == 4:
                             wins_today += 1
                     style_stats[p]["Wins_Actual"] += wins_today
                     style_stats[p]["Wins_Max"] += 12  # Max vittorie possibili (12 gare)
@@ -492,9 +492,9 @@ with tab6:
         st.markdown("**Impostazioni gioco:**")
         st.markdown("- Cilindrata: **150cc**\n- Oggetti: **Estremi**\n- CPU: **Nessuna**\n- Piste: **Casuali**")
     with c2:
-        st.markdown("**Punteggi Gara (F1 Style):**")
+        st.markdown("**Punteggi Gara:**")
         st.markdown(
-            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **12** |\n| 🥈 2° | **9** |\n| 🥉 3° | **6** |\n| 💩 4° | **3** |")
+            "| Pos | Punti |\n|---|---|\n| 🥇 1° | **4** |\n| 🥈 2° | **3** |\n| 🥉 3° | **2** |\n| 💩 4° | **1** |")
 
     st.markdown("#### 🌟 Grand Slam (Perfect Score)")
     st.warning(
