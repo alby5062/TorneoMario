@@ -265,12 +265,15 @@ with tab3:
                 bonus_grand_slam = 10
                 perfect_score_player = p
 
-            total = mk8_sum + skill + bonus_grand_slam
+            bonus_5_wins = 5 if race_points.count(4) >= 5 else 0
+
+            total = mk8_sum + skill + bonus_grand_slam + bonus_5_wins
 
             d_stats.append({
                 "Giocatore": p,
                 "MK8": mk8_sum,
                 "Skill": skill,
+                "Bonus 5W": f"+{bonus_5_wins}" if bonus_5_wins > 0 else "-",
                 "Bonus 12/12": f"+{bonus_grand_slam}" if bonus_grand_slam > 0 else "-",
                 "TOTALE": total
             })
@@ -299,10 +302,11 @@ with tab4:
                 race_points = [g_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
                 mk8 = sum(race_points)
                 grand_slam = 10 if race_points.count(4) == 12 else 0
+                bonus_5_wins = 5 if race_points.count(4) >= 5 else 0
                 skill = g_data["basket"][i] + g_data["darts"][i]
 
                 gen_stats[p]["Presenze"] += 1
-                gen_stats[p]["Totale"] += (mk8 + skill + grand_slam)
+                gen_stats[p]["Totale"] += (mk8 + skill + grand_slam + bonus_5_wins)
 
     final_list = []
     for p, s in gen_stats.items():
@@ -337,8 +341,9 @@ with tab5:
                 idx = players.index(p)
                 if not d_data.get("absent", [False] * 4)[idx]:
                     r_pts = [d_data["races"][f"Gara {r + 1}"][idx] for r in range(12)]
-                    bonus = 10 if r_pts.count(4) == 12 else 0
-                    day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus
+                    bonus_gs = 10 if r_pts.count(4) == 12 else 0
+                    bonus_5w = 5 if r_pts.count(4) >= 5 else 0
+                    day_total = sum(r_pts) + d_data["basket"][idx] + d_data["darts"][idx] + bonus_gs + bonus_5w
                     scores_history.append(day_total)
 
             if not scores_history:
@@ -374,8 +379,9 @@ with tab5:
             for i, p in enumerate(players):
                 if not d_absent[i]:
                     r_pts = [d_data["races"][f"Gara {r + 1}"][i] for r in range(12)]
-                    bonus = 10 if r_pts.count(12) == 12 else 0
-                    points_today = sum(r_pts) + d_data["basket"][i] + d_data["darts"][i] + bonus
+                    bonus_gs = 10 if r_pts.count(4) == 12 else 0
+                    bonus_5w = 5 if r_pts.count(4) >= 5 else 0
+                    points_today = sum(r_pts) + d_data["basket"][i] + d_data["darts"][i] + bonus_gs + bonus_5w
 
                     cum_points[p] += points_today;
                     cum_games[p] += 1
@@ -499,6 +505,10 @@ with tab6:
     st.markdown("#### 🌟 Grand Slam (Perfect Score)")
     st.warning(
         "Se un giocatore vince **tutte e 12 le gare** (fa sempre 1°) nella stessa giornata, ottiene un **Bonus di +10 Punti**!")
+
+    st.markdown("#### 🖐️ Cinque Vittorie")
+    st.success(
+        "Se un giocatore vince **almeno 5 gare** nella stessa giornata, ottiene un **Bonus di +5 Punti**!")
 
     st.subheader("3. 🏀🎯 La Resa dei Conti - Skill Challenge")
     st.markdown("""
